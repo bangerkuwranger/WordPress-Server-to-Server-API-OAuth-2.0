@@ -15,7 +15,8 @@
         }
     ],
     "require": {
-        "league/oauth2-server": "^5.1.0"
+        "league/oauth2-server": "^5.1.0",
+        "phpseclib/phpseclib": "^2.0.0"
     },
     "minimum-stability": "stable"
 }
