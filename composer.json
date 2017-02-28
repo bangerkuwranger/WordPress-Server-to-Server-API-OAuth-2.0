@@ -1,0 +1,21 @@
+{
+    "name": "bangerkuwranger/wordpress-server-to-server-api-oauth-2",
+    "description": "Provides simple OAuth 2.0 authentication for server-to-server use of the WordPress JSON API",
+    "version": "1.0.0",
+    "type": "wordpress-plugin",
+    "keywords": ["api", "oauth", "authentication"],
+    "homepage": "http://www.github.com/bangerkuwranger/WordPress-Server-to-Server-API-OAuth-2.0",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Chad A. Carino",
+            "email": "artist@chadacarino.com",
+            "homepage": "http://www.chadacarino.com",
+            "role": "Developer"
+        }
+    ],
+    "require": {
+        "league/oauth2-server": "^5.1.0"
+    },
+    "minimum-stability": "stable"
+}
