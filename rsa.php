@@ -10,12 +10,12 @@ class CacwpssaoKey {
 	
 	public function __construct() {
 	
-		$this->rsa_path = CACWPSSAO_DIR_PATH . '/rsa/';
+		$this->rsa_path = CACWPSSAO_DIR_PATH . 'rsa/';
 		if( !( file_exists( $this->rsa_path . 'prkey.rsa' ) ) ) {
 			$this->genKeyPair();
 		}
-		$this->$priv_key = $this->rsa_path . 'prkey.rsa';
-		$this->$pub_key = $this->rsa_path . 'prkey.rsa.pub';
+		$this->priv_key = $this->rsa_path . 'prkey.rsa';
+		$this->pub_key = $this->rsa_path . 'prkey.rsa.pub';
 	
 	}
 	
@@ -30,15 +30,19 @@ class CacwpssaoKey {
 	}
 	
 	private function genKeyPair() {
-		unlink( $this->rsa_path . 'prkey.rsa.pub' );
-		$key = fopen( $this->rsa_path . 'prkey.rsa' );
-		$pkey = fopen( $this->rsa_path . 'prkey.rsa.pub' );
+		
+		if( file_exists( $this->rsa_path . 'prkey.rsa.pub' ) ) {
+			unlink( $this->rsa_path . 'prkey.rsa.pub' );
+		}
+		$key = fopen( $this->rsa_path . 'prkey.rsa', 'w' );
+		$pkey = fopen( $this->rsa_path . 'prkey.rsa.pub', 'w' );
 		$rsa = new phpseclib\Crypt\RSA();
 		$keys = $rsa->createKey();
 		fwrite( $key, $keys['privatekey'] );
 		fwrite( $pkey, $keys['publickey'] );
 		fclose( $key );
 		fclose( $pkey );
+		
 	}
 	
 

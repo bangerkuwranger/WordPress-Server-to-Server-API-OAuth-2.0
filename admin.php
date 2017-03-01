@@ -39,7 +39,7 @@ function cacwpssao_server() {
 		'labels'                => $labels,
 		'supports'              => array( ),
 		'hierarchical'          => false,
-		'public'                => true,
+		'public'                => false,
 		'show_ui'               => false,
 		'show_in_menu'          => false,
 		'menu_position'         => 5,
@@ -104,6 +104,14 @@ class Cacwpssao_Server_List_Table extends WP_List_Table {
     
     }
     
+    public function column_enabled($item) {
+    
+    	$status = (bool)$item['enabled'];
+    	$value = $status ? '&check;' : '&cross;';
+    	return '<span style="font-size:1.5em;margin-left:1em;">' . $value . '</span>';
+    
+    }
+    
     public function get_columns() {
     
         $columns = array(
@@ -139,15 +147,37 @@ class Cacwpssao_Server_List_Table extends WP_List_Table {
     }
     
     public function process_bulk_action() {
-    
-        if( 'delete'===$this->current_action() ) {
-            wp_die('Items deleted (or they would be if we had items to delete)!');
-        }
+    	
+    	if( !current_user_can( 'create_users' ) ) {
+			wp_die('Sorry, no can do. Ask your site administrator if you need access.');
+		}
+		else {
+        
+        	$server_id = ( is_array( $_REQUEST['server'] ) ) ? $_REQUEST['server'] : array( $_REQUEST['server'] );
+			
+			foreach ( $server_id as $id ) {
+           
+				if( 'enable'===$this->current_action() ) {
+					update_post_meta( $id, 'server_enabled', 1 );
+				}
+				
+				if( 'disable'===$this->current_action() ) {
+					update_post_meta( $id, 'server_enabled', 0 );
+				}
+				
+				if( 'delete'===$this->current_action() ) {
+					wp_delete_post( $id, true );
+				}
+			
+			}
+		
+		}
         
     }
     
     public function prepare_items() {
     
+        global $wpdb;
         $per_page = 15;
         $columns = $this->get_columns();
         $hidden = array();
@@ -160,6 +190,7 @@ class Cacwpssao_Server_List_Table extends WP_List_Table {
         	'numberposts'	=> -1
         );
         $servers = get_posts( $server_args );
+//         $query = new WP_Query( array( 'post_type' => 'cacwpssaoserver' ) );
         $data = array();
         $i = 0;
 		if( count( $servers ) > 0 ) {
@@ -218,12 +249,25 @@ function cAcwpssao_add_menu_items() {
 } 
 add_action('admin_menu', 'cAcwpssao_add_menu_items');
 
+function cAcwpssao_admin_notice__missing() {
+    ?>
+    <div class="notice notice-error is-dismissible">
+        <p><?php _e( 'Both Name and Description are required. Please fill out required fields and submit again.', 'sample-text-domain' ); ?></p>
+    </div>
+    <?php
+}
+
 
 function cAcwpssao_render_add_server() {
 	$post_type = 'cAcwpssaoserver';
-	if( isset( $_POST['Submit'] ) && $_POST['Submit'] == 'Add Server' ) {
+	if( isset( $_POST['submit'] ) ) {
 	
-		check_admin_referrer( 'cAcwpssao-add-server', 'cAcwpssao-add-server-nonce' );
+		check_admin_referer( 'cAcwpssao-add-server', 'cAcwpssao-add-server-nonce' );
+		
+		if( !current_user_can( 'create_users' ) ) {
+			wp_die('Sorry, no can do. Ask your site administrator if you need access.');
+		}
+		
 		$proceed = false;
 		if( isset( $_POST['cAcwpssao-new-server-name'] ) || $_POST['cAcwpssao-new-server-name'] != '' ) {
 		
@@ -231,6 +275,7 @@ function cAcwpssao_render_add_server() {
 			if( !isset( $_POST['cAcwpssao-new-server-description'] ) || $_POST['cAcwpssao-new-server-description'] == '' ) {
 			
 				$proceed = false;
+				add_action( 'admin_notices', 'cAcwpssao_admin_notice__missing' );
 			
 			}
 		
@@ -238,13 +283,19 @@ function cAcwpssao_render_add_server() {
 		else {
 		
 			$proceed = false;
+			add_action( 'admin_notices', 'cAcwpssao_admin_notice__missing' );
 		
 		}
+		
+		
 		if( $proceed ) {
 			
 			$name = sanitize_text_field( $_POST['cAcwpssao-new-server-name'] );
 			$desc = sanitize_text_field( $_POST['cAcwpssao-new-server-description'] );
-			
+			$factory = new RandomLib\Factory;
+			$generator = $factory->getMediumStrengthGenerator();
+			$client_id = $generator->generateString( 20 );
+			$client_secret = $generator->generateString( 20 );
 			$post_array = array(
 				'post_type'		=> $post_type,
 				'post_name'		=> sanitize_title( $name . '-' . $client_id ),
@@ -256,46 +307,104 @@ function cAcwpssao_render_add_server() {
 					'server_client_secret'	=> $client_secret,
 				),
 			);
+			$new_server = wp_insert_post( $post_array );
+			wp_publish_post( $new_server );
+			?>
+			<div class="wrap">
+				<h1>Client Server Added</h1>
+				<div style="background:#ECECEC;border:1px solid #CCC;padding:0 10px;margin-top:5px;border-radius:5px;-moz-border-radius:5px;-webkit-border-radius:5px;">
+					<p><strong><?php echo $name; ?></strong> - <?php echo $desc ?></p>
+					<p><strong>Client ID</strong> - <?php echo $client_id ?></p>
+					<p><strong>Client Secret</strong> - <?php echo $client_secret ?></p>
+					<p><?php echo ' <a href="' . esc_url( admin_url( 'admin.php?page=cAcwpssao_server_list' ) ) . '" class="page-title-action">&lsaquo; Server List</a>'; ?></p>
+				</div>
+			</div>
+			<?php
 			
 		}
-		
+		else {
+			
+			$name = isset( $_POST['cAcwpssao-new-server-name'] ) ? $_POST['cAcwpssao-new-server-name'] : '';
+			$desc = isset( $_POST['cAcwpssao-new-server-description'] ) ? $_POST['cAcwpssao-new-server-description'] : '';
+			
+			?>
+
+			<div class="wrap">
+				<h1>Add Client Server</h1>
+				<div style="background:#ECECEC;border:1px solid #CCC;padding:0 10px;margin-top:5px;border-radius:5px;-moz-border-radius:5px;-webkit-border-radius:5px;">
+					<p>Enter the name and description for this server to generate keys for this user.</p>
+				</div>
+				<form id="cAcwpssao-server-add" method="post">
+					<input type="hidden" name="page" value="<?php echo $_REQUEST['page'] ?>" />
+					<?php wp_nonce_field( 'cAcwpssao-add-server', 'cAcwpssao-add-server-nonce' ); ?>
+					<table class="form-table">
+						<tbody>
+							<tr>
+								<th scope="row">
+									<label for="cAcwpssao-new-server-name">Name</label>
+								</th>
+								<td>
+									<input type="text" id="cAcwpssao-new-server-name" name="cAcwpssao-new-server-name" class="regular-text" value="<?php echo $name; ?>" />
+								</td>
+							</tr>
+							<tr>
+								<th scope="row">
+									<label for="cAcwpssao-new-server-description">Description</label>
+								</th>
+								<td>
+									<input type="text" id="cAcwpssao-new-server-description" name="cAcwpssao-new-server-description" class="regular-text" value="<?php echo $desc; ?>" />
+								</td>
+							</tr>
+						</tbody>
+					</table>
+					<p class="submit"><input type="submit" name="submit" id="submit" class="button button-primary" value="Add Server"></p>
+				</form>
+			</div>
+
+			<?php
+		}
+	
 	}
+	else {
 	
-	?>
+		?>
+
+		<div class="wrap">
+			<h1>Add Client Server</h1>
+			<div style="background:#ECECEC;border:1px solid #CCC;padding:0 10px;margin-top:5px;border-radius:5px;-moz-border-radius:5px;-webkit-border-radius:5px;">
+				<p>Enter the name and description for this server to generate keys for this user.</p>
+			</div>
+			<form id="cAcwpssao-server-add" method="post">
+				<input type="hidden" name="page" value="<?php echo $_REQUEST['page'] ?>" />
+				<?php wp_nonce_field( 'cAcwpssao-add-server', 'cAcwpssao-add-server-nonce' ); ?>
+				<table class="form-table">
+					<tbody>
+						<tr>
+							<th scope="row">
+								<label for="cAcwpssao-new-server-name">Name</label>
+							</th>
+							<td>
+								<input type="text" id="cAcwpssao-new-server-name" name="cAcwpssao-new-server-name" class="regular-text" />
+							</td>
+						</tr>
+						<tr>
+							<th scope="row">
+								<label for="cAcwpssao-new-server-description">Description</label>
+							</th>
+							<td>
+								<input type="text" id="cAcwpssao-new-server-description" name="cAcwpssao-new-server-description" class="regular-text" />
+							</td>
+						</tr>
+					</tbody>
+				</table>
+				<p class="submit"><input type="submit" name="submit" id="submit" class="button button-primary" value="Add Server"></p>
+			</form>
+		</div>
+
+		<?php
 	
-	<div class="wrap">
-		<h1>Add Client Server</h1>
-		<div style="background:#ECECEC;border:1px solid #CCC;padding:0 10px;margin-top:5px;border-radius:5px;-moz-border-radius:5px;-webkit-border-radius:5px;">
-            <p>Enter the name and description for this server to generate keys for this user.</p>
-        </div>
-        <form id="cAcwpssao-server-add" method="post">
-            <input type="hidden" name="page" value="<?php echo $_REQUEST['page'] ?>" />
-            <?php wp_nonce_field( 'cAcwpssao-add-server', 'cAcwpssao-add-server-nonce' ); ?>
-            <table class="form-table">
-            	<tbody>
-            		<tr>
-            			<th scope="row">
-							<label for="cAcwpssao-new-server-name">Name</label>
-						</th>
-						<td>
-							<input type="text" id="cAcwpssao-new-server-name" name="cAcwpssao-new-server-name" class="regular-text" />
-						</td>
-					</tr>
-					<tr>
-            			<th scope="row">
-							<label for="cAcwpssao-new-server-description">Description</label>
-						</th>
-						<td>
-							<input type="text" id="cAcwpssao-new-server-description" name="cAcwpssao-new-server-description" class="regular-text" />
-						</td>
-					</tr>
-				</tbody>
-			</table>
-			<p class="submit"><input type="submit" name="submit" id="submit" class="button button-primary" value="Add Server"></p>
-        </form>
-	</div>
-	
-	<?php
+	}
+		
 }
 
 
@@ -315,15 +424,15 @@ function cAcwpssao_render_server_list() {
         <div id="icon-users" class="icon32"><br/></div>
         <h1>Client Servers
         <?php
-		echo ' <a href="' . esc_url( admin_url( $post_new_file ) ) . '" class="page-title-action">Add New Server</a>';
+		if( current_user_can( 'create_users' ) ) { echo ' <a href="' . esc_url( admin_url( $post_new_file ) ) . '" class="page-title-action">Add New Server</a>'; }
 		?>
         </h1>
         <div style="background:#ECECEC;border:1px solid #CCC;padding:0 10px;margin-top:5px;border-radius:5px;-moz-border-radius:5px;-webkit-border-radius:5px;">
             <p>These are client servers currently authorized to access the JSON API</p>
         </div>
-        
+
         <!-- Forms are NOT created automatically, so you need to wrap the table in one to use features like bulk actions -->
-        <form id="cAcwpssao-server-list" method="get">
+        <form id="cAcwpssao-server-list" method="post">
             <!-- For plugins, we also need to ensure that the form posts back to our current page -->
             <input type="hidden" name="page" value="<?php echo $_REQUEST['page'] ?>" />
             <!-- Now we can render the completed list table -->

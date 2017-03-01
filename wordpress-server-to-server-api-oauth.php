@@ -31,6 +31,12 @@ require_once CACWPSSAO_DIR_PATH . 'rsa.php';
 
 require_once CACWPSSAO_DIR_PATH . 'admin.php';
 
+function cacwpssao_activate() {
+
+    $rsakeys = new CacwpssaoKey();
+}
+register_activation_hook( __FILE__, 'cacwpssao_activate' );
+
 function checkApiAuth( $result ){
     
     $user_checks_out = false;
@@ -44,4 +50,4 @@ function checkApiAuth( $result ){
     return $result;
             
 }
-add_filter('rest_authentication_errors', 'checkApiAuth');
+// add_filter('rest_authentication_errors', 'checkApiAuth');
