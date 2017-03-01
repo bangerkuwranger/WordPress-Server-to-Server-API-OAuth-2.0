@@ -240,13 +240,23 @@ function cAcwpssao_render_server_list() {
     $cAcwpssao_server_list = new Cacwpssao_Server_List_Table();
     //Fetch, prepare, sort, and filter our data...
     $cAcwpssao_server_list->prepare_items();
+    $post_type = 'cAcwpssaoserver';
+    $post_new_file = "post-new.php?post_type=$post_type";
+
     
     ?>
     <div class="wrap">
         
         <div id="icon-users" class="icon32"><br/></div>
-        <h2>Client Servers</h2>
-        
+        <h1>Client Servers
+        <?php
+		if ( isset( $post_new_file ) && current_user_can( $post_type_object->cap->create_posts ) ) {
+
+			echo ' <a href="' . esc_url( admin_url( $post_new_file ) ) . '" class="page-title-action">' . esc_html( $post_type_object->labels->add_new ) . '</a>';
+
+		}
+		?>
+        </h1>
         <div style="background:#ECECEC;border:1px solid #CCC;padding:0 10px;margin-top:5px;border-radius:5px;-moz-border-radius:5px;-webkit-border-radius:5px;">
             <p>These are client servers currently authorized to access the JSON API</p>
         </div>
