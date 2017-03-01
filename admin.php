@@ -210,30 +210,95 @@ class Cacwpssao_Server_List_Table extends WP_List_Table {
 
 
 
-/** ************************ REGISTER THE TEST PAGE ****************************
- *******************************************************************************
- * Now we just need to define an admin page. For this example, we'll add a top-level
- * menu item to the bottom of the admin menus.
- */
 function cAcwpssao_add_menu_items() {
 
-    add_menu_page('Client Servers', 'Servers', 'activate_plugins', 'cAcwpssao_server_list', 'cAcwpssao_render_server_list');
+    add_menu_page('Servers', 'OAauth 2.0 Server Settings', 'activate_plugins', 'cAcwpssao_server_list', 'cAcwpssao_render_server_list');
+    add_submenu_page( 'cAcwpssao_server_list', 'Add New Server', 'Add New Server', 'activate_plugins', 'cAcwpssao_add_server', 'cAcwpssao_render_add_server');
 
 } 
 add_action('admin_menu', 'cAcwpssao_add_menu_items');
 
 
+function cAcwpssao_render_add_server() {
+	$post_type = 'cAcwpssaoserver';
+	if( isset( $_POST['Submit'] ) && $_POST['Submit'] == 'Add Server' ) {
+	
+		check_admin_referrer( 'cAcwpssao-add-server', 'cAcwpssao-add-server-nonce' );
+		$proceed = false;
+		if( isset( $_POST['cAcwpssao-new-server-name'] ) || $_POST['cAcwpssao-new-server-name'] != '' ) {
+		
+			$proceed = true;
+			if( !isset( $_POST['cAcwpssao-new-server-description'] ) || $_POST['cAcwpssao-new-server-description'] == '' ) {
+			
+				$proceed = false;
+			
+			}
+		
+		}
+		else {
+		
+			$proceed = false;
+		
+		}
+		if( $proceed ) {
+			
+			$name = sanitize_text_field( $_POST['cAcwpssao-new-server-name'] );
+			$desc = sanitize_text_field( $_POST['cAcwpssao-new-server-description'] );
+			
+			$post_array = array(
+				'post_type'		=> $post_type,
+				'post_name'		=> sanitize_title( $name . '-' . $client_id ),
+				'meta_input'	=> array(
+					'server_name'			=> $name,
+					'server_description'	=> $desc,
+					'server_enabled'		=> true,
+					'server_client_id'		=> $client_id,
+					'server_client_secret'	=> $client_secret,
+				),
+			);
+			
+		}
+		
+	}
+	
+	?>
+	
+	<div class="wrap">
+		<h1>Add Client Server</h1>
+		<div style="background:#ECECEC;border:1px solid #CCC;padding:0 10px;margin-top:5px;border-radius:5px;-moz-border-radius:5px;-webkit-border-radius:5px;">
+            <p>Enter the name and description for this server to generate keys for this user.</p>
+        </div>
+        <form id="cAcwpssao-server-add" method="post">
+            <input type="hidden" name="page" value="<?php echo $_REQUEST['page'] ?>" />
+            <?php wp_nonce_field( 'cAcwpssao-add-server', 'cAcwpssao-add-server-nonce' ); ?>
+            <table class="form-table">
+            	<tbody>
+            		<tr>
+            			<th scope="row">
+							<label for="cAcwpssao-new-server-name">Name</label>
+						</th>
+						<td>
+							<input type="text" id="cAcwpssao-new-server-name" name="cAcwpssao-new-server-name" class="regular-text" />
+						</td>
+					</tr>
+					<tr>
+            			<th scope="row">
+							<label for="cAcwpssao-new-server-description">Description</label>
+						</th>
+						<td>
+							<input type="text" id="cAcwpssao-new-server-description" name="cAcwpssao-new-server-description" class="regular-text" />
+						</td>
+					</tr>
+				</tbody>
+			</table>
+			<p class="submit"><input type="submit" name="submit" id="submit" class="button button-primary" value="Add Server"></p>
+        </form>
+	</div>
+	
+	<?php
+}
 
 
-
-/** *************************** RENDER TEST PAGE ********************************
- *******************************************************************************
- * This function renders the admin page and the example list table. Although it's
- * possible to call prepare_items() and display() from the constructor, there
- * are often times where you may need to include logic here between those steps,
- * so we've instead called those methods explicitly. It keeps things flexible, and
- * it's the way the list tables are used in the WordPress core.
- */
 function cAcwpssao_render_server_list() {
     
     //Create an instance of our package class...
@@ -241,7 +306,7 @@ function cAcwpssao_render_server_list() {
     //Fetch, prepare, sort, and filter our data...
     $cAcwpssao_server_list->prepare_items();
     $post_type = 'cAcwpssaoserver';
-    $post_new_file = "post-new.php?post_type=$post_type";
+    $post_new_file = "admin.php?page=cAcwpssao_add_server";
 
     
     ?>
@@ -250,11 +315,7 @@ function cAcwpssao_render_server_list() {
         <div id="icon-users" class="icon32"><br/></div>
         <h1>Client Servers
         <?php
-		if ( isset( $post_new_file ) && current_user_can( $post_type_object->cap->create_posts ) ) {
-
-			echo ' <a href="' . esc_url( admin_url( $post_new_file ) ) . '" class="page-title-action">' . esc_html( $post_type_object->labels->add_new ) . '</a>';
-
-		}
+		echo ' <a href="' . esc_url( admin_url( $post_new_file ) ) . '" class="page-title-action">Add New Server</a>';
 		?>
         </h1>
         <div style="background:#ECECEC;border:1px solid #CCC;padding:0 10px;margin-top:5px;border-radius:5px;-moz-border-radius:5px;-webkit-border-radius:5px;">
