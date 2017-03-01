@@ -146,7 +146,7 @@ class Cacwpssao_Server_List_Table extends WP_List_Table {
         
     }
     
-    protected function prepare_items() {
+    public function prepare_items() {
     
         $per_page = 15;
         $columns = $this->get_columns();
