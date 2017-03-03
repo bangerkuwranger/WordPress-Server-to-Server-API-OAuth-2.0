@@ -19,7 +19,7 @@ class CacwpssaoKey {
 	
 	}
 	
-	protected function paths() {
+	public function paths() {
 		
 		$paths = array(
 			'private'	=> $this->priv_key,

@@ -87,6 +87,7 @@ class Cacwpssao_Server_List_Table extends WP_List_Table {
             case 'client_id':
             case 'client_secret':
             case 'enabled':
+            case 'permissions':
                 return $item[$column_name];
             default:
                 return print_r( $item, true );
@@ -94,7 +95,7 @@ class Cacwpssao_Server_List_Table extends WP_List_Table {
     
     }
     
-    public function column_cb($item) {
+    public function column_cb( $item ) {
     
         return sprintf(
             '<input type="checkbox" name="%1$s[]" value="%2$s" />',
@@ -104,11 +105,30 @@ class Cacwpssao_Server_List_Table extends WP_List_Table {
     
     }
     
-    public function column_enabled($item) {
+    public function column_enabled( $item ) {
     
     	$status = (bool)$item['enabled'];
     	$value = $status ? '&check;' : '&cross;';
     	return '<span style="font-size:1.5em;margin-left:1em;">' . $value . '</span>';
+    
+    }
+    
+    public function column_permissions( $item ) {
+    
+    	if( $item['permissions'] ) {
+    	
+    		$value = '<span style="font-size:1.5em;margin-left:1em;">&check;</span>';
+    		$link = '<span class="edit"><a href="' . admin_url( 'admin.php?page=cAcwpssao_server_perms&serverid=' . $item['ID'] ) . '" title="Edit Permissions">Edit Permissions</a>';
+    	
+    	}
+    	else {
+    	
+    		$value = '<span style="font-size:1.5em;margin-left:1em;">&cross;</span>';
+    		$link = '<span class="edit"><a href="' . admin_url( 'admin.php?page=cAcwpssao_server_perms&serverid=' . $item['ID'] ) . '" title="Set Permissions">Set Permissions</a>';
+    	
+    	}
+    	
+    	return $value . '&nbsp;' . $link;
     
     }
     
@@ -122,6 +142,9 @@ class Cacwpssao_Server_List_Table extends WP_List_Table {
             'client_id' 	=> 'Client ID',
             'client_secret'	=> 'Client Secret'
         );
+        if( current_user_can( 'create_users' ) ) {
+			$columns['permissions'] = 'Permissions Set';
+		}
         return $columns;
     
     }
@@ -148,27 +171,31 @@ class Cacwpssao_Server_List_Table extends WP_List_Table {
     
     public function process_bulk_action() {
     	
-    	if( !current_user_can( 'create_users' ) ) {
-			wp_die('Sorry, no can do. Ask your site administrator if you need access.');
-		}
-		else {
-        
-        	$server_id = ( is_array( $_REQUEST['server'] ) ) ? $_REQUEST['server'] : array( $_REQUEST['server'] );
+		if( isset( $_REQUEST['server'] ) ) {
+		
+			if( !current_user_can( 'create_users' ) ) {
+				wp_die('Sorry, no can do. Ask your site administrator if you need access.');
+			}
+			else {
+		
+				$server_id = ( is_array( $_REQUEST['server'] ) ) ? $_REQUEST['server'] : array( $_REQUEST['server'] );
 			
-			foreach ( $server_id as $id ) {
-           
-				if( 'enable'===$this->current_action() ) {
-					update_post_meta( $id, 'server_enabled', 1 );
-				}
+				foreach ( $server_id as $id ) {
+		   
+					if( 'enable'===$this->current_action() ) {
+						update_post_meta( $id, 'server_enabled', 1 );
+					}
 				
-				if( 'disable'===$this->current_action() ) {
-					update_post_meta( $id, 'server_enabled', 0 );
-				}
+					if( 'disable'===$this->current_action() ) {
+						update_post_meta( $id, 'server_enabled', 0 );
+					}
 				
-				if( 'delete'===$this->current_action() ) {
-					wp_delete_post( $id, true );
-				}
+					if( 'delete'===$this->current_action() ) {
+						wp_delete_post( $id, true );
+					}
 			
+				}
+		
 			}
 		
 		}
@@ -203,13 +230,15 @@ class Cacwpssao_Server_List_Table extends WP_List_Table {
 				$description = get_post_meta( $id, 'server_description', true );
 				$clientid = get_post_meta( $id, 'server_client_id', true );
 				$clientsecret = get_post_meta( $id, 'server_client_secret', true );
+				$perms = get_post_meta( $id, 'server_permissions_set', true );
 				$data[$i] = array(
 					'ID'			=> $id,
 					'enabled'		=> $enabled,
 					'name'			=> $name,
 					'description'	=> $description,
 					'client_id' 	=> $clientid,
-					'client_secret'	=> $clientsecret
+					'client_secret'	=> $clientsecret,
+					'permissions'	=> $perms,
 				);
 				$i++;
 		
@@ -243,8 +272,10 @@ class Cacwpssao_Server_List_Table extends WP_List_Table {
 
 function cAcwpssao_add_menu_items() {
 
-    add_menu_page('Servers', 'OAauth 2.0 Server Settings', 'activate_plugins', 'cAcwpssao_server_list', 'cAcwpssao_render_server_list');
-    add_submenu_page( 'cAcwpssao_server_list', 'Add New Server', 'Add New Server', 'activate_plugins', 'cAcwpssao_add_server', 'cAcwpssao_render_add_server');
+    add_menu_page('OAuth 2.0', 'OAauth 2.0 Settings', 'activate_plugins', 'cAcwpssao_admin_menu', 'cAcwpssao_render_genereal_settings');
+    add_submenu_page( 'cAcwpssao_admin_menu', 'Servers', 'Server Settings', 'activate_plugins', 'cAcwpssao_server_list', 'cAcwpssao_render_server_list');
+    add_submenu_page( 'cAcwpssao_admin_menu', 'Add New Server', 'Add New Server', 'activate_plugins', 'cAcwpssao_add_server', 'cAcwpssao_render_add_server');
+    add_submenu_page( 'admin.php', 'Server Permissions', '', 'activate_plugins', 'cAcwpssao_server_perms', 'cAcwpssao_render_server_perms' );
 
 } 
 add_action('admin_menu', 'cAcwpssao_add_menu_items');
@@ -257,6 +288,56 @@ function cAcwpssao_admin_notice__missing() {
     <?php
 }
 
+
+function cAcwpssao_render_genereal_settings() {
+
+	if( isset( $_POST['submit'] ) ) {
+	
+		check_admin_referer( 'cAcwpssao-save-settings', 'cAcwpssao-save-settings-nonce' );
+		
+		if( !current_user_can( 'create_users' ) ) {
+			wp_die('Sorry, no can do. Ask your site administrator if you need access.');
+		}
+		
+		$is_force_auth = isset( $_POST['cAcwpssao-is-force-auth'] ) ? (bool)( $_POST['cAcwpssao-is-force-auth'] ) : 0;
+		update_option( 'cacwpssao_is_force_auth', $is_force_auth );
+		
+	}
+	else {
+	
+		$is_force_auth = get_option( 'cacwpssao_is_force_auth', 0 );
+		
+	}
+	
+	?>
+	<div class="wrap">
+		<h1>OAuth 2.0 Settings</h1>
+		<div style="background:#ECECEC;border:1px solid #CCC;padding:0 10px;margin-top:5px;border-radius:5px;-moz-border-radius:5px;-webkit-border-radius:5px;">
+			<p>General Settings for Authentication for WP JSON API</p>
+		</div>
+		<form id="cAcwpssao-server-add" method="post">
+			<input type="hidden" name="page" value="<?php echo $_REQUEST['page'] ?>" />
+			<?php wp_nonce_field( 'cAcwpssao-save-settings', 'cAcwpssao-save-settings-nonce' ); ?>
+			<table class="form-table">
+				<tbody>
+					<tr>
+						<th scope="row">
+							<label for="cAcwpssao-is-force-auth">Force GET Authorization</label>
+						</th>
+						<td>
+							<span>Yes</span><input type="radio" name="cAcwpssao-is-force-auth" value="1" <?php checked( '1' == $is_force_auth ); ?> />
+							<span>No</span><input type="radio" name="cAcwpssao-is-force-auth" value="0" <?php checked( '0' == $is_force_auth ); ?> />
+							<p>Normally, WP doesn't attempt to authenticate GET requests. If set to "Yes", GET requests will require a valid AUTH token and permissions set for the client.</p>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+			<p class="submit"><input type="submit" name="submit" id="submit" class="button button-primary" value="Save"></p>
+		</form>
+	</div>
+	<?php	
+
+}
 
 function cAcwpssao_render_add_server() {
 	$post_type = 'cAcwpssaoserver';
@@ -300,11 +381,12 @@ function cAcwpssao_render_add_server() {
 				'post_type'		=> $post_type,
 				'post_name'		=> sanitize_title( $name . '-' . $client_id ),
 				'meta_input'	=> array(
-					'server_name'			=> $name,
-					'server_description'	=> $desc,
-					'server_enabled'		=> true,
-					'server_client_id'		=> $client_id,
-					'server_client_secret'	=> $client_secret,
+					'server_name'				=> $name,
+					'server_description'		=> $desc,
+					'server_enabled'			=> true,
+					'server_client_id'			=> $client_id,
+					'server_client_secret'		=> $client_secret,
+					'server_permissions_set'	=> false,
 				),
 			);
 			$new_server = wp_insert_post( $post_array );
@@ -441,4 +523,48 @@ function cAcwpssao_render_server_list() {
         
     </div>
     <?php
+}
+
+
+function cAcwpssao_render_server_perms() {
+
+	if( !current_user_can( 'create_users' ) ) {
+		wp_die('Sorry, no can do. Ask your site administrator if you need access.');
+	}
+	if( isset( $_REQUEST['serverid'] ) && !empty( $_REQUEST['serverid'] ) ) {
+	
+		$server_id = intval( $_REQUEST['serverid'] );
+		$pt = get_post_type( $server_id );
+		if( 'cacwpssaoserver' !== $pt ) {
+			wp_die('Client server not found.');
+		}
+	
+	}
+	else {
+	
+		wp_die('No client server specified.');
+	
+	}
+	$server_name = get_post_meta( $server_id, 'server_name', true );
+	$server_desc = get_post_meta( $server_id, 'server_description', true );
+	$client_server_perms = new CacwpssaoPermissions( $server_id );
+	if( isset( $_POST['submit'] ) ) {
+	
+		$client_server_perms->saveOptions();
+	
+	}
+	?>
+	<div class="wrap">
+		<h1>Client Server Permissions <?php echo ' <a href="' . esc_url( admin_url( 'admin.php?page=cAcwpssao_server_list' ) ) . '" class="page-title-action">&lsaquo; Server List</a>'; ?></h1>
+		<h2>Server: <?php echo $server_name; ?></h2>
+		<h4><?php echo $server_desc; ?></h4>
+		<div style="background:#ECECEC;border:1px solid #CCC;padding:0 10px;margin-top:5px;border-radius:5px;-moz-border-radius:5px;-webkit-border-radius:5px;">
+			<p>Set permissions for this client server. GET is enabled by default, to force all GET requests to use authentication, set 'Force GET Authorization' to 'Yes' in General Settings for the plugin.</p>
+		</div>
+		<?php
+		$client_server_perms->renderOptionsForm();
+		?>
+	</div>
+	<?php
+
 }

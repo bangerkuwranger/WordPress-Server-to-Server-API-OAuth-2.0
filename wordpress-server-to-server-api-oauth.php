@@ -29,6 +29,8 @@ require_once CACWPSSAO_DIR_PATH . 'vendor/autoload.php';
 
 require_once CACWPSSAO_DIR_PATH . 'rsa.php';
 
+require_once CACWPSSAO_DIR_PATH . 'permissions.php';
+
 require_once CACWPSSAO_DIR_PATH . 'admin.php';
 
 function cacwpssao_activate() {
@@ -37,7 +39,11 @@ function cacwpssao_activate() {
 }
 register_activation_hook( __FILE__, 'cacwpssao_activate' );
 
-function checkApiAuth( $result ){
+// require_once CACWPSSAO_DIR_PATH . 'authorization.php';
+
+require_once CACWPSSAO_DIR_PATH . 'endpoints.php';
+
+function cacwpssao_checkApiAuth( $result, $server, $request ){
     
     $user_checks_out = false;
     
@@ -47,7 +53,66 @@ function checkApiAuth( $result ){
         $result = null;
     }
 
-    return $result;
+//     return $result;
+return false;
             
 }
-// add_filter('rest_authentication_errors', 'checkApiAuth');
+// add_filter('rest_authentication_errors', 'cacwpssao_checkApiAuth');
+
+function cacwpssao_req_auth( $result, $server, $request ) {
+     // if ( ! is_user_logged_in() ) {
+//         return new WP_Error( 'not-logged-in', 'API Requests are only supported for authenticated requests', array( 'status' => 401 ) );
+//     }
+
+	$force_get_auth = get_option( 'cacwpssao_is_force_auth' );
+	$op = $request->get_method();
+	$route = $request->get_route();
+	if( '/cacoauth/v1/token' == $route && ( 'GET' == $op || 'POST' == $op ) ) {
+		return null;
+	}
+	$allow = false;
+	switch( $op ) {
+	
+		case 'HEAD':
+			$allow = true;
+			break;
+		case 'GET':
+			if( $force_get_auth ) {
+			
+				$allow = 'auth';
+			
+			}
+			else {
+			
+				$allow = true;
+			
+			}
+			break;
+		case 'POST':
+		case 'DELETE':
+			$allow = 'auth';
+			break;
+		default:
+			echo '<pre>' . print_r( $request, true ) . '</pre>';
+	
+	}
+	
+	if( 'auth' === $allow ) {
+	
+		$allow = cacwpssao_checkApiAuth( $result, $server, $request );
+		add_filter('rest_authentication_errors', function() {
+			return true;
+		});
+		
+	}
+	
+	if( false === $allow ) {
+	
+		$result = new WP_Error( 'not-logged-in', 'API Requests are only supported for authenticated requests<br/><pre>' . print_r( $request, true ) . '</pre>', array( 'status' => 401 ) );
+	
+	}
+	
+	return $result;
+
+}
+add_filter( 'rest_pre_dispatch', 'cacwpssao_req_auth', 10, 3 );
