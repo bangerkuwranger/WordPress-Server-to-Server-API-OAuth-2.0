@@ -39,7 +39,7 @@ function cacwpssao_activate() {
 }
 register_activation_hook( __FILE__, 'cacwpssao_activate' );
 
-// require_once CACWPSSAO_DIR_PATH . 'authorization.php';
+require_once CACWPSSAO_DIR_PATH . 'authorization.php';
 
 require_once CACWPSSAO_DIR_PATH . 'endpoints.php';
 
