@@ -2987,6 +2987,9 @@ class CacwpssaoAccessTokenRepository implements AccessTokenRepositoryInterface {
     	);
     	
     	add_option( '_cacwpssao_token' . $key, $token, null, 'no' );
+    	$token_expires = get_option( '_cacwpssao_token_expires', array() );
+    	$expires = $token['expiration']->format( 'c' );
+    	update_option( '_cacwpssao_token_expires', array( $key	=> $expires ) );
     
     }
 
@@ -3014,6 +3017,12 @@ class CacwpssaoAccessTokenRepository implements AccessTokenRepositoryInterface {
     
     	$token = maybe_unserialize( get_option( '_cacwpssao_token' . $tokenId ) );
     	return $token['is_revoked'];
+    
+    }
+    
+    public function removeAccessToken( $tokenId ) {
+    
+    	return delete_option( '_cacwpssao_token' . $tokenId );
     
     }
 
