@@ -83,6 +83,7 @@ class CacwpssaoResponse implements ResponseInterface {
     private $protocol = '1.1';
     /** @var StreamInterface */
     private $stream;
+    /** @var object */
 
     /** @var array Map of standard HTTP status code/reason phrases */
     private static $phrases = [
@@ -151,6 +152,20 @@ class CacwpssaoResponse implements ResponseInterface {
     private $statusCode = 200;
     
     
+    public function getWpResponse() {
+    
+    	$wp_response = new WP_REST_Response( json_decode( $this->getBody()->__toString() ) );
+    	foreach( $this->getHeaders() as $header => $values ) {
+    	
+    		$value = implode( ', ', $values );
+    		$wp_response->header( $header, $value );
+    	
+    	}
+    	$wp_response->set_status( $this->getStatusCode() );
+    	return $wp_response;
+    
+    }
+    
     
     public function getProtocolVersion() {
     
@@ -215,6 +230,7 @@ class CacwpssaoResponse implements ResponseInterface {
     
     
     public function withHeader( $header, $value ) {
+    
         if( !is_array( $value ) ) {
         
             $value = [$value];
@@ -222,15 +238,14 @@ class CacwpssaoResponse implements ResponseInterface {
         }
         $value = $this->trimHeaderValues( $value );
         $normalized = strtolower( $header );
-        $new = clone $this;
-        if( isset( $new->headerNames[$normalized] ) ) {
+        if( isset( $this->headerNames[$normalized] ) ) {
         
-            unset( $new->headers[$new->headerNames[$normalized]] );
+            unset( $this->headers[$this->headerNames[$normalized]] );
         
         }
-        $new->headerNames[$normalized] = $header;
-        $new->headers[$header] = $value;
-        return $new;
+        $this->headerNames[$normalized] = $header;
+        $this->headers[$header] = $value;
+        return $this;
     
     }
     
@@ -282,11 +297,6 @@ class CacwpssaoResponse implements ResponseInterface {
     
     public function getBody() {
     
-        if( !$this->stream ) {
-    	
-            $this->stream = new CacwpssaoStream( '' );
-        
-        }
         return $this->stream;
     
     }
@@ -377,11 +387,7 @@ class CacwpssaoResponse implements ResponseInterface {
     ) {
     
         $this->statusCode = (int) $status;
-        if( $body !== '' && $body !== null ) {
-        
-            $this->stream = new CacwpssaoStream( $body );
-        
-        }
+		$this->body = $body;
         $this->setHeaders( $headers );
         if( $reason == '' && isset( self::$phrases[$this->statusCode] ) ) {
         
@@ -394,35 +400,29 @@ class CacwpssaoResponse implements ResponseInterface {
         
         }
         $this->protocol = $version;
-        $this->body = file_get_contents('php://input');
         if( is_scalar( $this->body ) ) {
 		
-       		$stream = fopen( 'php://temp', 'r+' );
+			$tmp = CACWPSSAO_DIR_PATH . 'tmp/tkn.tmp';
+       		$stream = fopen( $tmp, 'w+' );
+       		if( false===$stream ) {
+       		
+       			throw new RuntimeException( 'cannot open file ' . $tmp . 'for stream.' );
+       		
+       		}
 			if( $this->body !== '' ) {
 				fwrite( $stream, $this->body );
 				fseek( $stream, 0 );
 			}
-			$this->stream =  new CacwpssaoStream( $stream );
+			
+			$this->stream = new CacwpssaoStream( $stream );
 		
 		}
-		else{ 
+		elseif( gettype( $this->body ) == 'resource' ) {
 		
-			switch( gettype( $this->body ) ) {
-		
-				case 'resource':
-					$this->stream = new CacwpssaoStream( $this->body );
-					break;
-				
-				case 'object':
-					if( $this->body instanceof CacwpssaoStream ) {
-				
-						$this->stream =  $this->body;
-				
-					}
-					break;
-			}
+			$this->stream = new CacwpssaoStream( $this->body );
 		
 		}
+    
     }
     
     
@@ -445,15 +445,14 @@ class CacwpssaoResponse implements ResponseInterface {
     
     public function withStatus( $code, $reasonPhrase = '' ) {
     
-        $new = clone $this;
-        $new->statusCode = (int) $code;
-        if( $reasonPhrase == '' && isset( self::$phrases[$new->statusCode] ) ) {
+        $this->statusCode = (int) $code;
+        if( $reasonPhrase == '' && isset( self::$phrases[$this->statusCode] ) ) {
         
-            $reasonPhrase = self::$phrases[$new->statusCode];
+            $reasonPhrase = self::$phrases[$this->statusCode];
         
         }
-        $new->reasonPhrase = $reasonPhrase;
-        return $new;
+        $this->reasonPhrase = $reasonPhrase;
+        return $this;
     
     }
 
@@ -1882,7 +1881,17 @@ class CacwpssaoServerRequest implements ServerRequestInterface {
 			$this->method = $wp_request->get_method();
 			$this->query_params = $wp_request->get_query_params();
 			$this->uploaded_files = $wp_request->get_file_params();
-			$this->parsed_body = $wp_request->get_body_params();
+			
+			if( $this->method === 'GET' ) {
+			
+				$this->parsed_body = $wp_request->get_query_params();
+			
+			}
+			else {
+			
+				$this->parsed_body = $wp_request->get_body_params();
+			
+			}
 		
 		}
 		else {
@@ -3128,13 +3137,18 @@ class CacwpssaoClientEntity implements ClientEntityInterface {
 	
 		$this->id = $client_id;
 		$post = $this->getClientPost();
-		$this->post_id = $post->ID;
-		$this->name = get_post_meta( $this->post_id, 'server_name', true );
-		$this->desc = get_post_meta( $this->post_id, 'server_description', true );
 		$this->redirectUri = null;
-		if( false !== $this->post_id ) {
+		if( false !== $post ) {
+			$this->post_id = $post->ID;
+			$this->name = get_post_meta( $this->post_id, 'server_name', true );
+			$this->desc = get_post_meta( $this->post_id, 'server_description', true );
 			$this->secret = get_post_meta( $this->post_id, 'server_client_secret', true );
 			$this->permissions = new CacwpssaoPermissions( $this->post_id );
+		}
+		else {
+		
+			$this->post_id = false;
+		
 		}
 	
 	}
