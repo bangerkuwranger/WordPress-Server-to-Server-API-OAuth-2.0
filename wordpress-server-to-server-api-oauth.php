@@ -44,9 +44,13 @@ require_once CACWPSSAO_DIR_PATH . 'authorization.php';
 require_once CACWPSSAO_DIR_PATH . 'endpoints.php';
 require_once CACWPSSAO_DIR_PATH . 'cron.php';
 
+use League\OAuth2\Server\Exception\OAuthServerException;
+
+
 function cacwpssao_checkApiAuth( $result, $server, $request ){
     
     $user_checks_out = false;
+    
     
     if($user_checks_out) {
         $result = true;
@@ -100,10 +104,30 @@ function cacwpssao_req_auth( $result, $server, $request ) {
 	
 	if( 'auth' === $allow ) {
 	
-		$allow = cacwpssao_checkApiAuth( $result, $server, $request );
-		add_filter('rest_authentication_errors', function() {
-			return true;
-		});
+// 		$allow = cacwpssao_checkApiAuth( $result, $server, $request );
+// 		add_filter('rest_authentication_errors', function() {
+// 			return true;
+// 		});
+		$resource_server = cacwpssaoResourceServer();
+		$auth_request = new CacwpssaoServerRequest( $request );
+		$response =  new CacwpssaoResponse( 200, array(), 'stuff' );
+// 		return print_r( $_SERVER, true );
+		try {
+		
+			$auth_result = $resource_server->validateAuthenticatedRequest( $auth_request );
+			$result = $auth_result;
+			$allow = true;
+			
+		}
+		catch (OAuthServerException $exception) {
+            $result = $exception->generateHttpResponse($response)->getWpResponse();
+            // @codeCoverageIgnoreStart
+        } 
+        catch (\Exception $exception) {
+            $result = new OAuthServerException($exception->getMessage(), 0, 'unknown_error', 500);
+            $result = $result->generateHttpResponse($response)->getWpResponse();
+        }
+        
 		
 	}
 	
@@ -112,6 +136,7 @@ function cacwpssao_req_auth( $result, $server, $request ) {
 		$result = new WP_Error( 'not-logged-in', 'API Requests are only supported for authenticated requests<br/><pre>' . print_r( $request, true ) . '</pre>', array( 'status' => 401 ) );
 	
 	}
+	if( true === $allow ) { return null; };
 	
 	return $result;
 
