@@ -2,7 +2,7 @@
 
 defined( 'ABSPATH' ) or die();
 
-$default_$scopes = array(
+$default_scopes = array(
 	'post',
 	'taxonomy',
 	'tax_value',
@@ -13,7 +13,7 @@ $default_$scopes = array(
 	'settings',
 );
 
-$cacwpssao_global_scopes = apply_filters( 'cacwpssao_perm_scopes', $default_scopes )
+$cacwpssao_global_scopes = apply_filters( 'cacwpssao_perm_scopes', $default_scopes );
 
 class CacwpssaoPermissions {
 
@@ -132,14 +132,15 @@ class CacwpssaoPermissions {
 	
 	
 	
-	protected function validateScope( $scope ) {
+	public function validateScope( $scope_id ) {
 	
 		$valid = false;
-		$scope = trim( strtolower( $scope ) );
+		$scope = trim( $scope_id );
+		$scope = strtolower( $scope_id );
 		$valid_perms = $this->getValidPerms();
 		foreach( $valid_perms as $perm ) {
 		
-			if( strpos( $perm, $scope ) !== false ) {
+			if( strpos( $perm, $scope_id ) !== false ) {
 			
 				$valid = true;
 				break;
@@ -153,8 +154,9 @@ class CacwpssaoPermissions {
 	
 	
 	
-	protected function validatePerm( $scope, $value, $operation ) {
+	public function validatePerm( $scope, $value, $operation ) {
 	
+		$scope_id = $scope->getIdentifier();
 		if( !($this->permExists( $scope, $value, $operation ) ) ) {
 			return false;
 		}
@@ -226,7 +228,7 @@ class CacwpssaoPermissions {
 		$perms = array();
 		foreach( $this->options as $option => $values ) {
 		
-			if( $value['setting'] == true ) {
+			if( $values['setting'] == true ) {
 			
 				array_push( $perms, $option );
 			

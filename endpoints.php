@@ -1,6 +1,7 @@
 <?php
 
 defined( 'ABSPATH' ) or die();
+use League\OAuth2\Server\ResponseTypes\BearerTokenResponse;
 
 function cacwpssao_grant_request( $request ) {
 
@@ -10,7 +11,28 @@ function cacwpssao_grant_request( $request ) {
 		return new WP_Error( 'malformed-request', 'Token requests require grant_type, client_id, client_secret, and scope.' . print_r( $request, true ), array( 'status' => 401 ) );
 	
 	}
-	return $params;
+
+	$auth = array(
+		'grant_type'		=> $params['grant_type'],
+		'client_id'			=> $params['client_id'],
+		'client_secret'		=> $params['client_secret'],
+		'scope'				=> $params['scope']
+	);
+	
+	$oauth = cacwpssaoServer();
+	$token_request = new CacwpssaoServerRequest( $request );
+	$response =  new CacwpssaoResponse();
+// 	$response_obj = new BearerTokenResponse();
+// 	$token_response = $response_obj->generateHttpResponse( $response );
+	
+// 	$authorizer = cacwpssaoAuthorizationServerMiddleware();
+// 	
+// 	$response = new BearerTokenResponse();
+// 	
+// 	$authorizer( $request, $response, 'cacwpssao_process_auth' );
+
+	return $oauth->respondToAccessTokenRequest( $token_request, $response );	
+	
 
 }
 
@@ -22,3 +44,8 @@ add_action( 'rest_api_init', function () {
 } );
 
 
+function cacwpssao_process_auth( $request, $response ) {
+
+	return $request->get_headers()['authorization'];
+
+}

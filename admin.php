@@ -375,8 +375,8 @@ function cAcwpssao_render_add_server() {
 			$desc = sanitize_text_field( $_POST['cAcwpssao-new-server-description'] );
 			$factory = new RandomLib\Factory;
 			$generator = $factory->getMediumStrengthGenerator();
-			$client_id = $generator->generateString( 20 );
-			$client_secret = $generator->generateString( 20 );
+			$client_id = $generator->generateString( 20, '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ' );
+			$client_secret = $generator->generateString( 20, '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ' );
 			$post_array = array(
 				'post_type'		=> $post_type,
 				'post_name'		=> sanitize_title( $name . '-' . $client_id ),
