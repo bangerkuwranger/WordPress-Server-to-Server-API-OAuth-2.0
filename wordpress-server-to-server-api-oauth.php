@@ -98,7 +98,7 @@ function cacwpssao_req_auth( $result, $server, $request ) {
 			$allow = 'auth';
 			break;
 		default:
-			echo '<pre>' . print_r( $request, true ) . '</pre>';
+			$allow = false;
 	
 	}
 	
@@ -110,22 +110,37 @@ function cacwpssao_req_auth( $result, $server, $request ) {
 // 		});
 		$resource_server = cacwpssaoResourceServer();
 		$auth_request = new CacwpssaoServerRequest( $request );
+		if( !$auth_request->hasHeader( 'Authorization' ) ) {
+		
+			return new WP_Error( 'not-authorized', 'API Requests are only supported for authenticated requests', array( 'status' => 401 ) );
+		
+		}
 		$response =  new CacwpssaoResponse( 200, array(), 'stuff' );
 // 		return print_r( $_SERVER, true );
 		try {
 		
 			$auth_result = $resource_server->validateAuthenticatedRequest( $auth_request );
+			$perm_error = cacwpssao_validateRequestPermissions( $auth_request );
+			if( null !== $perm_error ) {
+			
+				return $perm_error;
+			
+			}
 			$result = $auth_result;
 			$allow = true;
 			
 		}
-		catch (OAuthServerException $exception) {
+		catch( OAuthServerException $exception ) {
+		
             $result = $exception->generateHttpResponse($response)->getWpResponse();
             // @codeCoverageIgnoreStart
+        
         } 
-        catch (\Exception $exception) {
+        catch( \Exception $exception ) {
+        
             $result = new OAuthServerException($exception->getMessage(), 0, 'unknown_error', 500);
             $result = $result->generateHttpResponse($response)->getWpResponse();
+        
         }
         
 		
@@ -142,3 +157,43 @@ function cacwpssao_req_auth( $result, $server, $request ) {
 
 }
 add_filter( 'rest_pre_dispatch', 'cacwpssao_req_auth', 10, 3 );
+
+
+
+function cacwpssao_validateRequestPermissions( $request ) {
+
+	$client_id = $request->getAttribute( 'oauth_client_id', null );
+	if( null === $client_id ) {
+	
+		return = new WP_Error( 'no-client', 'Could not get client id.', array( 'status' => 401 ) );
+	
+	}
+	$client_post_id = cacwpssao_getClientByClientId( $client_id );
+	if( !$client_post_id ) {
+	
+		return = new WP_Error( 'no-client', 'Client does not exist.', array( 'status' => 401 ) );
+	
+	}
+	$permissions = new CacwpssaoPermissions( $client_post_id );
+	//get scope, value and operation from request / uri
+	$valid_request = $permissions->validatePerm( $scope, $value, $operation );
+	return null;
+	
+
+}
+
+
+//return false if not found, or post id of client
+function cacwpssao_getClientByClientId( $client_id ) {
+
+	global $wpdb;
+	$results = $wpdb->get_results( "select post_id, meta_key from $wpdb->postmeta where meta_value = '" . $client_id . "'", ARRAY_A );
+	if( empty( $results ) ) {
+	
+		return false;
+	
+	}
+	return $results;
+
+}
+
