@@ -154,15 +154,27 @@ class CacwpssaoPermissions {
 	
 	
 	
-	public function validatePerm( $scope, $value, $operation ) {
+	public function validatePerm( $scopes, $value, $operation ) {
 	
-		$scope_id = $scope->getIdentifier();
-		if( !($this->permExists( $scope, $value, $operation ) ) ) {
-			return false;
-		}
 		$valid_perms = $this->getValidPerms();
-		$perm = trim( strtolower( $scope ) . '_' . strtolower( $value ) . '_' . strtoupper( $operation ) );
-		return array_key_exists( $perm, $valid_perms );
+		foreach( $scopes as $scope ) {
+		
+			$scope_id = $scope->id;
+			if( $this->permExists( $scope_id, $value, $operation ) ) {
+			
+				$perm = trim( strtolower( $scope_id ) . '_' . strtolower( $value ) . '_' . strtoupper( $operation ) );
+
+				if( in_array( $perm, $valid_perms ) ) {
+				
+					return $perm;
+				
+				}
+			
+			}
+
+			
+		}
+		return false;
 	
 	}
 	
@@ -227,7 +239,7 @@ class CacwpssaoPermissions {
 	
 		$perms = array();
 		foreach( $this->options as $option => $values ) {
-		
+		 
 			if( $values['setting'] == true ) {
 			
 				array_push( $perms, $option );

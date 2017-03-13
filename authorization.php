@@ -1849,7 +1849,7 @@ class CacwpssaoServerRequest implements ServerRequestInterface {
 	
 	
 	
-	public function __construct( WP_REST_Request $wp_request = null, $with = null ) {
+	public function __construct( WP_REST_Request $wp_request = null, $with = null, CacwpssaoServerRequest $orig = null ) {
 	
 		//set up RequestInterface vars	
 	
@@ -1972,6 +1972,50 @@ class CacwpssaoServerRequest implements ServerRequestInterface {
 		//process data for 'with' methods that spawn new instances
 		if( null !== $with && is_array( $with ) & isset( $with['what'] ) && isset( $with['value'] ) ) {
 		
+			if( null !== $orig ) {
+			
+				$this->headers = $orig->getHeaders();
+				$this->body = $orig->getBody();
+				$this->method = $orig->getMethod();
+				$this->query_params = $orig->getQueryParams();
+				$this->uploaded_files = $orig->getUploadedFiles();
+				$this->parsed_body = $orig->getParsedBody();
+				$this->request_target = $orig->getRequestTarget();
+				$this->uri = $orig->getUri();
+				$this->server_params = $orig->getServerParams();
+				$this->cookie_params = $orig->getCookieParams();
+				$this->attributes = $orig->getAttributes();
+				if( is_scalar( $this->body ) ) {
+		
+					$stream = fopen( 'php://temp', 'r+' );
+					if( $this->body !== '' ) {
+						fwrite( $stream, $this->body );
+						fseek( $stream, 0 );
+					}
+					$this->stream =  new CacwpssaoStream( $stream );
+		
+				}
+				else{ 
+		
+					switch( gettype( $this->body ) ) {
+		
+						case 'resource':
+							$this->stream = new CacwpssaoStream( $this->body );
+							break;
+				
+						case 'object':
+							if( $this->body instanceof CacwpssaoStream ) {
+				
+								$this->stream =  $this->body;
+				
+							}
+							break;
+					}
+		
+				}
+			
+			}
+			
 			switch( $with['what'] ) {
 			
 				case('protocol_version'):
@@ -2148,7 +2192,7 @@ class CacwpssaoServerRequest implements ServerRequestInterface {
     		'what'	=> 'protocol_version',
     		'value'	=> $version,
     	);
-    	$newRequest = new CacwpssaoServerRequest( $this->wp_request, $with );
+    	$newRequest = new CacwpssaoServerRequest( $this->wp_request, $with, $this );
     	return $newRequest;
     
     }
@@ -2290,7 +2334,7 @@ class CacwpssaoServerRequest implements ServerRequestInterface {
     			'value'	=> $value,
     		),
     	);
-    	$newRequest = new CacwpssaoServerRequest( $this->wp_request, $with );
+    	$newRequest = new CacwpssaoServerRequest( $this->wp_request, $with, $this );
     	return $newRequest;
     
     }
@@ -2320,7 +2364,7 @@ class CacwpssaoServerRequest implements ServerRequestInterface {
     			'value'	=> $value,
     		),
     	);
-    	$newRequest = new CacwpssaoServerRequest( $this->wp_request, $with );
+    	$newRequest = new CacwpssaoServerRequest( $this->wp_request, $with, $this );
     	return $newRequest;
     
     }
@@ -2343,7 +2387,7 @@ class CacwpssaoServerRequest implements ServerRequestInterface {
     		'what'	=> 'removed_header',
     		'value'	=> $name,
     	);
-    	$newRequest = new CacwpssaoServerRequest( $this->wp_request, $with );
+    	$newRequest = new CacwpssaoServerRequest( $this->wp_request, $with, $this );
     	return $newRequest;
     
     }
@@ -2383,7 +2427,7 @@ class CacwpssaoServerRequest implements ServerRequestInterface {
     		'what'	=> 'body',
     		'value'	=> $body,
     	);
-    	$newRequest = new CacwpssaoServerRequest( $this->wp_request, $with );
+    	$newRequest = new CacwpssaoServerRequest( $this->wp_request, $with, $this );
     	return $newRequest;
     
     }
@@ -2434,7 +2478,7 @@ class CacwpssaoServerRequest implements ServerRequestInterface {
     		'what'	=> 'request_target',
     		'value'	=> $requestTarget,
     	);
-    	$newRequest = new CacwpssaoServerRequest( $this->wp_request, $with );
+    	$newRequest = new CacwpssaoServerRequest( $this->wp_request, $with, $this );
     	return $newRequest;
     
     }
@@ -2471,7 +2515,7 @@ class CacwpssaoServerRequest implements ServerRequestInterface {
     		'what'	=> 'method',
     		'value'	=> $method,
     	);
-    	$newRequest = new CacwpssaoServerRequest( $this->wp_request, $with );
+    	$newRequest = new CacwpssaoServerRequest( $this->wp_request, $with, $this );
     	return $newRequest;
     
     }
@@ -2530,7 +2574,7 @@ class CacwpssaoServerRequest implements ServerRequestInterface {
     			'preserve_host'	=> $preserveHost,
     		),
     	);
-    	$newRequest = new CacwpssaoServerRequest( $this->wp_request, $with );
+    	$newRequest = new CacwpssaoServerRequest( $this->wp_request, $with, $this );
     	return $newRequest;
     
     }
@@ -2590,7 +2634,7 @@ class CacwpssaoServerRequest implements ServerRequestInterface {
     		'what'	=> 'cookies',
     		'value'	=> $cookies,
     	);
-    	$newRequest = new CacwpssaoServerRequest( $this->wp_request, $with );
+    	$newRequest = new CacwpssaoServerRequest( $this->wp_request, $with, $this );
     	return $newRequest;
     
     }
@@ -2642,7 +2686,7 @@ class CacwpssaoServerRequest implements ServerRequestInterface {
     		'what'	=> 'query_params',
     		'value'	=> $query,
     	);
-    	$newRequest = new CacwpssaoServerRequest( $this->wp_request, $with );
+    	$newRequest = new CacwpssaoServerRequest( $this->wp_request, $with, $this );
     	return $newRequest;
     
     }
@@ -2733,7 +2777,7 @@ class CacwpssaoServerRequest implements ServerRequestInterface {
     		'what'	=> 'uploaded_files',
     		'value'	=> $uploadedFiles,
     	);
-    	$newRequest = new CacwpssaoServerRequest( $this->wp_request, $with );
+    	$newRequest = new CacwpssaoServerRequest( $this->wp_request, $with, $this );
     	return $newRequest;
     
     }
@@ -2793,7 +2837,7 @@ class CacwpssaoServerRequest implements ServerRequestInterface {
     		'what'	=> 'parsed_body',
     		'value'	=> $data,
     	);
-    	$newRequest = new CacwpssaoServerRequest( $this->wp_request, $with );
+    	$newRequest = new CacwpssaoServerRequest( $this->wp_request, $with, $this );
     	return $newRequest;
     
     }
@@ -2865,7 +2909,7 @@ class CacwpssaoServerRequest implements ServerRequestInterface {
     			'value'	=> $value
     		),
     	);
-    	$newRequest = new CacwpssaoServerRequest( $this->wp_request, $with );
+    	$newRequest = new CacwpssaoServerRequest( $this->wp_request, $with, $this );
     	return $newRequest;
     
     }
@@ -2890,7 +2934,7 @@ class CacwpssaoServerRequest implements ServerRequestInterface {
     		'what'	=> 'remove_attribute',
     		'value'	=> $name,
     	);
-    	$newRequest = new CacwpssaoServerRequest( $this->wp_request, $with );
+    	$newRequest = new CacwpssaoServerRequest( $this->wp_request, $with, $this );
     	return $newRequest;
     
     }

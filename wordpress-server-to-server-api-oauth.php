@@ -120,7 +120,7 @@ function cacwpssao_req_auth( $result, $server, $request ) {
 		try {
 		
 			$auth_result = $resource_server->validateAuthenticatedRequest( $auth_request );
-			$perm_error = cacwpssao_validateRequestPermissions( $auth_request );
+			$perm_error = cacwpssao_validateRequestPermissions( $auth_result );
 			if( null !== $perm_error ) {
 			
 				return $perm_error;
@@ -165,20 +165,54 @@ function cacwpssao_validateRequestPermissions( $request ) {
 	$client_id = $request->getAttribute( 'oauth_client_id', null );
 	if( null === $client_id ) {
 	
-		return = new WP_Error( 'no-client', 'Could not get client id.', array( 'status' => 401 ) );
+		return new WP_Error( 'no-client', 'Could not get client id.', array( 'status' => 401 ) );
+	
+	}
+	if( is_array( $client_id ) ) {
+	
+		$client_id = $client_id[0];
 	
 	}
 	$client_post_id = cacwpssao_getClientByClientId( $client_id );
 	if( !$client_post_id ) {
 	
-		return = new WP_Error( 'no-client', 'Client does not exist.', array( 'status' => 401 ) );
+		return new WP_Error( 'no-client', 'Client does not exist.', array( 'status' => 401 ) );
 	
 	}
 	$permissions = new CacwpssaoPermissions( $client_post_id );
 	//get scope, value and operation from request / uri
-	$valid_request = $permissions->validatePerm( $scope, $value, $operation );
-	return null;
+	$scopes_att = $request->getAttribute( 'oauth_scopes' );
+	if( isset( $scopes_att[0] ) ) {
 	
+		$scopes = $scopes_att[0];
+	
+	}
+	else {
+	
+		return new WP_Error( 'cannot-validate', 'Could not validate scopes ' . $scopes_att, array( 'status' => 401 ) );
+	
+	}
+	$uri_obj = $request->getUri();
+	$uri_path = $uri_obj->getPath();
+	$op = strtoupper( $request->getMethod() );
+	$uri_array = explode( '/', $uri_path );
+	if( isset( $uri_array[4] ) ) {
+	
+		$value = $uri_array[4];
+	
+	}
+	else {
+	
+		return new WP_Error( 'cannot-validate', 'Could not validate path ' . $uri_path, array( 'status' => 401 ) );
+	
+	}
+	$valid_request = $permissions->validatePerm( $scopes, $value, $op );
+	if( $valid_request ) {
+	
+		return null;
+	
+	}
+	return new WP_Error( 'client-not-authorized', 'Client not authorized to ' . $op . ' ' . $value . '.', array( 'status' => 401 ) );
 
 }
 
@@ -193,7 +227,7 @@ function cacwpssao_getClientByClientId( $client_id ) {
 		return false;
 	
 	}
-	return $results;
+	return $results[0]['post_id'];
 
 }
 
