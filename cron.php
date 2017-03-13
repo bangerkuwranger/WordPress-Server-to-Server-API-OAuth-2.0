@@ -21,10 +21,12 @@ function cacwpssao_cleanup_tokens() {
 		if( 1 < intval( $diff ) ) {
 		
 			delete_option( '_cacwpssao_token' . $key );
+			unset( $tokens[$key] );
 		
 		}
 	
 	}
+	update_option( '_cacwpssao_token_expires', $tokens );
 
 }
 
