@@ -2,7 +2,7 @@
 /**
  * Plugin Name: WordPress Server to Server API OAuth 2.0
  * Plugin URI: http://www.github.com/bangerkuwranger/WordPress-Server-to-Server-API-OAuth-2.0
- * Description: SKU management platform for Sundial Brands.
+ * Description: WP REST API OAuth2 support for server-to-server authentication only.
  * Version: 1.0.0
  * Author: Chad A. Carino
  * Author URI: http://www.chadacarino.com
